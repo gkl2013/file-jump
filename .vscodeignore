@@ -1,0 +1,14 @@
+.vscode/**
+src/**
+out/__mocks__/**
+out/**/*.map
+node_modules/**
+.gitignore
+.eslintrc.json
+tsconfig.json
+jest.config.js
+**/*.test.ts
+**/*.test.js
+CODEBUDDY.md
+coverage/**
+.vscode-test/**

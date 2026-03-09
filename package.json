@@ -1,0 +1,89 @@
+{
+  "name": "file-jump",
+  "displayName": "File Jump",
+  "description": "快速跳转 webpack 别名路径和自定义别名路径，支持 Vue 文件省略 .vue 后缀跳转，支持 monorepo 子项目跳转",
+  "version": "0.1.0",
+  "publisher": "edenlguo",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:javascript",
+    "onLanguage:typescript",
+    "onLanguage:javascriptreact",
+    "onLanguage:typescriptreact",
+    "onLanguage:vue",
+    "onLanguage:css",
+    "onLanguage:scss",
+    "onLanguage:less"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "File Jump",
+      "properties": {
+        "fileJump.aliasMap": {
+          "type": "object",
+          "default": {},
+          "description": "自定义别名映射，例如 { \"@\": \"src\", \"~\": \"src\" }"
+        },
+        "fileJump.webpackConfigPath": {
+          "type": "string",
+          "default": "",
+          "description": "webpack 配置文件路径（相对于工作区根目录），用于自动读取 resolve.alias"
+        },
+        "fileJump.vueExtension": {
+          "type": "boolean",
+          "default": true,
+          "description": "是否自动尝试补全 .vue 后缀进行跳转"
+        },
+        "fileJump.autoDetectMonorepo": {
+          "type": "boolean",
+          "default": true,
+          "description": "是否自动检测 monorepo 子项目并在子项目内解析别名"
+        },
+        "fileJump.extensions": {
+          "type": "array",
+          "default": [
+            ".ts",
+            ".tsx",
+            ".js",
+            ".jsx",
+            ".vue",
+            ".json",
+            ".css",
+            ".scss",
+            ".less"
+          ],
+          "description": "尝试补全的文件后缀列表（按优先级排列）"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "eslint src --ext ts",
+    "test": "jest --config jest.config.js",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "package": "vsce package",
+    "pretest": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^18.19.0",
+    "@types/vscode": "^1.75.0",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "eslint": "^8.56.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.2",
+    "typescript": "^5.3.0",
+    "@vscode/vsce": "^2.22.0"
+  }
+}
