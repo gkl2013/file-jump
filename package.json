@@ -2,7 +2,7 @@
   "name": "alias-file-jump",
   "displayName": "Alias File Jump",
   "description": "快速跳转 webpack 别名路径和自定义别名路径，支持 Vue 文件省略 .vue 后缀跳转，支持 monorepo 子项目跳转",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "gkl2013",
   "engines": {
     "vscode": "^1.75.0"
