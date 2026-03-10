@@ -28,34 +28,6 @@
 }
 ```
 
-## 开发
-
-```bash
-# 安装依赖
-npm install
-
-# 编译
-npm run compile
-
-# 监听模式编译
-npm run watch
-
-# 运行测试
-npm test
-
-# 代码检查
-npm run lint
-
-# 打包插件
-npm run package
-```
-
-## 调试
-
-1. 在 VSCode 中打开此项目
-2. 按 `F5` 启动调试，会打开一个扩展开发宿主窗口
-3. 在宿主窗口中打开一个含有别名路径的项目进行测试
-
 ## License
 
 MIT
