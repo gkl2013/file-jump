@@ -1,4 +1,4 @@
-# File Jump - VSCode Extension
+# Alias File Jump - VSCode Extension
 
 一个 VSCode 插件，支持按住 Ctrl/Cmd 点击快速跳转 webpack 别名路径、自定义别名路径，同时支持 Vue 文件省略 `.vue` 后缀跳转，以及 monorepo（单仓）子项目内别名跳转。
 
