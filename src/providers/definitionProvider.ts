@@ -9,7 +9,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { getConfig, resolveAliasMap, readWebpackAliases, readTsConfigPaths, readCommonConfigAliases } from '../utils/configReader';
 import { getImportContextAtPosition } from '../utils/importParser';
-import { resolveAliasPath, resolveRelativePath } from '../resolvers/aliasResolver';
+import { resolveAliasPath } from '../resolvers/aliasResolver';
 import { detectMonorepoPackages, findPackageForFile } from '../utils/monorepoDetector';
 import { AliasMapping, MonorepoPackage, FileJumpConfig } from '../types';
 
@@ -26,6 +26,10 @@ export class FileJumpDefinitionProvider implements vscode.DefinitionProvider {
   /**
    * Called by VSCode when the user Ctrl/Cmd+Clicks on a token.
    * Resolves the import path under the cursor to a file location.
+   *
+   * IMPORTANT: Only handles alias paths (e.g. '@/...', '~/...').
+   * Relative paths ('./...', '../...') and bare module specifiers ('lodash')
+   * are left to VSCode's built-in TS/JS language service to avoid duplicate definitions.
    */
   async provideDefinition(
     document: vscode.TextDocument,
@@ -42,8 +46,9 @@ export class FileJumpDefinitionProvider implements vscode.DefinitionProvider {
 
     const { importPath } = importContext;
 
-    // Skip node_modules imports (bare specifiers without @ alias)
-    if (this.isBareModuleSpecifier(importPath, config)) {
+    // Skip relative paths — VSCode built-in service already handles these.
+    // Processing them here would produce duplicate definitions.
+    if (importPath.startsWith('.') || importPath.startsWith('/')) {
       return undefined;
     }
 
@@ -55,26 +60,44 @@ export class FileJumpDefinitionProvider implements vscode.DefinitionProvider {
 
     const rootPath = workspaceFolder.uri.fsPath;
 
-    // Refresh alias cache if needed
+    // IMPORTANT: Refresh alias cache BEFORE checking bare module specifier,
+    // because isBareModuleSpecifier relies on cachedAliases being populated.
+    // If we check before refreshing, all alias paths would be incorrectly
+    // treated as bare module specifiers on first load (when cache is empty).
     await this.refreshAliases(rootPath, config);
+
+    // Skip node_modules imports (bare specifiers without @ alias)
+    if (this.isBareModuleSpecifier(importPath, config)) {
+      return undefined;
+    }
 
     // Determine which aliases to use based on the current file's location
     const aliases = this.getAliasesForFile(document.uri.fsPath, rootPath, config);
 
-    // Try to resolve the import path
-    let result = resolveAliasPath(importPath, aliases, config);
+    // Only try alias resolution — this is the only scenario where
+    // VSCode's built-in service cannot resolve the path
+    const result = resolveAliasPath(importPath, aliases, config);
 
-    // If alias resolution failed, try relative path resolution
-    if (!result && importPath.startsWith('.')) {
-      result = resolveRelativePath(importPath, document.uri.fsPath, config);
+    if (!result) {
+      return undefined;
     }
 
-    if (result) {
-      const targetUri = vscode.Uri.file(result.filePath);
-      return new vscode.Location(targetUri, new vscode.Position(0, 0));
+    // De-duplicate strategy:
+    // VSCode's built-in TS/JS language service (with tsconfig paths) can resolve
+    // alias paths for JS/TS file types on its own — including extension completion
+    // for .ts, .tsx, .js, .jsx and index file resolution.
+    // We only need to intervene for file types the built-in service does NOT handle,
+    // such as .vue, .css, .scss, .less, .json, etc.
+    // If the resolved file has a JS/TS extension, skip to avoid duplicate definitions.
+    const jsExtensions = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.mts', '.cts']);
+    const resolvedExt = path.extname(result.filePath).toLowerCase();
+    if (jsExtensions.has(resolvedExt)) {
+      // Built-in TS/JS service can handle this, skip to avoid duplicates
+      return undefined;
     }
 
-    return undefined;
+    const targetUri = vscode.Uri.file(result.filePath);
+    return new vscode.Location(targetUri, new vscode.Position(0, 0));
   }
 
   /**

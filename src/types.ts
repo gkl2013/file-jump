@@ -49,6 +49,12 @@ export interface ResolveResult {
   filePath: string;
   /** The original import string that was resolved */
   originalImport: string;
+  /**
+   * Whether the file was resolved by appending an extension or using an index file.
+   * true = VSCode built-in service likely cannot resolve this (e.g. .vue suffix omitted)
+   * false = exact path matched, built-in service might also resolve it
+   */
+  extensionAppended: boolean;
 }
 
 /**

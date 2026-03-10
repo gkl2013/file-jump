@@ -9,6 +9,14 @@ import * as fs from 'fs';
 import { AliasMapping, ResolveResult, FileJumpConfig } from '../types';
 
 /**
+ * Result of tryResolveFile: resolved path + whether extension was appended.
+ */
+interface FileResolveResult {
+  filePath: string;
+  extensionAppended: boolean;
+}
+
+/**
  * Resolves an aliased import path to an absolute file path.
  *
  * Resolution strategy (in order):
@@ -17,7 +25,6 @@ import { AliasMapping, ResolveResult, FileJumpConfig } from '../types';
  * 3. Try exact path
  * 4. Try path with each configured extension appended
  * 5. Try path/index with each extension
- * 6. If vueExtension enabled, additionally try .vue extension
  *
  * @param importPath - The import path from source code, e.g. '@/components/Header'
  * @param aliases - Array of alias mappings to try
@@ -44,8 +51,9 @@ export function resolveAliasPath(
   const resolved = tryResolveFile(absolutePath, config);
   if (resolved) {
     return {
-      filePath: resolved,
+      filePath: resolved.filePath,
       originalImport: importPath,
+      extensionAppended: resolved.extensionAppended,
     };
   }
 
@@ -88,31 +96,31 @@ export function findMatchingAlias(
  *
  * @param absolutePath - The absolute path to resolve (without extension)
  * @param config - Extension configuration
- * @returns Resolved absolute file path, or undefined
+ * @returns FileResolveResult if found, or undefined
  */
 export function tryResolveFile(
   absolutePath: string,
   config: FileJumpConfig
-): string | undefined {
-  // 1. Exact path exists as a file
+): FileResolveResult | undefined {
+  // 1. Exact path exists as a file — built-in TS/JS service can also resolve this
   if (isFile(absolutePath)) {
-    return absolutePath;
+    return { filePath: absolutePath, extensionAppended: false };
   }
 
-  // 2. Try with each configured extension
+  // 2. Try with each configured extension — built-in service cannot do this for aliases
   for (const ext of config.extensions) {
     const withExt = absolutePath + ext;
     if (isFile(withExt)) {
-      return withExt;
+      return { filePath: withExt, extensionAppended: true };
     }
   }
 
-  // 3. Try as directory with index file
+  // 3. Try as directory with index file — built-in service cannot do this for aliases
   if (isDirectory(absolutePath)) {
     for (const ext of config.extensions) {
       const indexPath = path.join(absolutePath, 'index' + ext);
       if (isFile(indexPath)) {
-        return indexPath;
+        return { filePath: indexPath, extensionAppended: true };
       }
     }
   }
@@ -143,8 +151,9 @@ export function resolveRelativePath(
   const resolved = tryResolveFile(absolutePath, config);
   if (resolved) {
     return {
-      filePath: resolved,
+      filePath: resolved.filePath,
       originalImport: importPath,
+      extensionAppended: resolved.extensionAppended,
     };
   }
 

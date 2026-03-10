@@ -67,7 +67,7 @@ describe('tryResolveFile', () => {
     });
 
     const result = tryResolveFile('/project/src/utils/helper.ts', defaultConfig);
-    expect(result).toBe('/project/src/utils/helper.ts');
+    expect(result).toEqual({ filePath: '/project/src/utils/helper.ts', extensionAppended: false });
   });
 
   it('should resolve by trying extensions', () => {
@@ -79,7 +79,7 @@ describe('tryResolveFile', () => {
     });
 
     const result = tryResolveFile('/project/src/utils/helper', defaultConfig);
-    expect(result).toBe('/project/src/utils/helper.ts');
+    expect(result).toEqual({ filePath: '/project/src/utils/helper.ts', extensionAppended: true });
   });
 
   it('should resolve index file in directory', () => {
@@ -94,7 +94,7 @@ describe('tryResolveFile', () => {
     });
 
     const result = tryResolveFile('/project/src/components', defaultConfig);
-    expect(result).toBe('/project/src/components/index.ts');
+    expect(result).toEqual({ filePath: '/project/src/components/index.ts', extensionAppended: true });
   });
 
   it('should resolve .vue extension when enabled', () => {
@@ -106,7 +106,7 @@ describe('tryResolveFile', () => {
     });
 
     const result = tryResolveFile('/project/src/views/Home', defaultConfig);
-    expect(result).toBe('/project/src/views/Home.vue');
+    expect(result).toEqual({ filePath: '/project/src/views/Home.vue', extensionAppended: true });
   });
 
   it('should return undefined when file not found', () => {
