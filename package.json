@@ -1,7 +1,7 @@
 {
   "name": "alias-file-jump",
   "displayName": "Alias File Jump",
-  "description": "快速跳转 webpack 别名路径和自定义别名路径，支持 Vue 文件省略 .vue 后缀跳转，支持 monorepo 子项目跳转",
+  "description": "WebStorm 级别的文件跳转：支持 alias 路径、tsconfig paths（含 extends 继承）、Vue/Svelte 组件标签、Sass partial、CSS ~ 前缀、npm 包入口点解析、monorepo 子项目跳转",
   "version": "0.2.0",
   "publisher": "gkl2013",
   "engines": {
@@ -17,9 +17,13 @@
     "onLanguage:javascriptreact",
     "onLanguage:typescriptreact",
     "onLanguage:vue",
+    "onLanguage:svelte",
     "onLanguage:css",
     "onLanguage:scss",
-    "onLanguage:less"
+    "onLanguage:less",
+    "onLanguage:html",
+    "onLanguage:json",
+    "onLanguage:jsonc"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -57,7 +61,12 @@
             ".json",
             ".css",
             ".scss",
-            ".less"
+            ".less",
+            ".sass",
+            ".styl",
+            ".svelte",
+            ".mjs",
+            ".cjs"
           ],
           "description": "尝试补全的文件后缀列表（按优先级排列）"
         }

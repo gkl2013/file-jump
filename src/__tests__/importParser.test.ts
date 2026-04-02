@@ -33,6 +33,10 @@ describe('extractImportPath', () => {
     expect(extractImportPath("const helper = require('@/utils/helper')")).toBe('@/utils/helper');
   });
 
+  it('should extract require.resolve call', () => {
+    expect(extractImportPath("const p = require.resolve('@/utils/helper')")).toBe('@/utils/helper');
+  });
+
   it('should extract CSS @import', () => {
     expect(extractImportPath("@import '~@/styles/variables.scss'")).toBe('~@/styles/variables.scss');
   });
@@ -47,6 +51,48 @@ describe('extractImportPath', () => {
 
   it('should handle double quotes', () => {
     expect(extractImportPath('import App from "@/App"')).toBe('@/App');
+  });
+
+  // New test cases for enhanced features
+
+  it('should extract re-export from', () => {
+    expect(extractImportPath("export { default } from '@/utils'")).toBe('@/utils');
+  });
+
+  it('should extract export * from', () => {
+    expect(extractImportPath("export * from '@/types'")).toBe('@/types');
+  });
+
+  it('should extract Sass @use', () => {
+    expect(extractImportPath("@use '@/styles/variables'")).toBe('@/styles/variables');
+  });
+
+  it('should extract Sass @use with as', () => {
+    expect(extractImportPath("@use '@/styles/mixins' as m")).toBe('@/styles/mixins');
+  });
+
+  it('should extract Sass @forward', () => {
+    expect(extractImportPath("@forward '@/styles/base'")).toBe('@/styles/base');
+  });
+
+  it('should extract CSS url() reference', () => {
+    expect(extractImportPath("background: url('@/assets/bg.png')")).toBe('@/assets/bg.png');
+  });
+
+  it('should extract CSS url() with double quotes', () => {
+    expect(extractImportPath('background: url("@/assets/bg.png")')).toBe('@/assets/bg.png');
+  });
+
+  it('should extract HTML src attribute', () => {
+    expect(extractImportPath('<script src="./main.js">')).toBe('./main.js');
+  });
+
+  it('should extract HTML link href attribute', () => {
+    expect(extractImportPath('<link rel="stylesheet" href="./styles.css">')).toBe('./styles.css');
+  });
+
+  it('should extract CSS @import url()', () => {
+    expect(extractImportPath("@import url('normalize.css')")).toBe('normalize.css');
   });
 });
 
@@ -73,7 +119,6 @@ describe('getVueComponentImportPath', () => {
 import MyComponent from '@/components/MyComponent.vue'
 </script>`
     );
-    // Cursor on "MyComponent" (line 1, column 3 is the start of "M")
     const result = getVueComponentImportPath(doc, mockPosition(1, 4));
     expect(result).toBe('@/components/MyComponent.vue');
   });
@@ -87,7 +132,6 @@ import MyComponent from '@/components/MyComponent.vue'
 import MyComponent from '@/components/MyComponent.vue'
 </script>`
     );
-    // Cursor on "my-component"
     const result = getVueComponentImportPath(doc, mockPosition(1, 5));
     expect(result).toBe('@/components/MyComponent.vue');
   });
@@ -101,7 +145,6 @@ import MyComponent from '@/components/MyComponent.vue'
 import MyComponent from '@/components/MyComponent.vue'
 </script>`
     );
-    // Cursor on closing "</MyComponent>"
     const result = getVueComponentImportPath(doc, mockPosition(1, 25));
     expect(result).toBe('@/components/MyComponent.vue');
   });
@@ -141,7 +184,6 @@ import { ElButton as CustomButton } from 'element-ui'
 import MyComponent from '@/components/MyComponent.vue'
 </script>`
     );
-    // "div" starts with lowercase, not a component
     const result = getVueComponentImportPath(doc, mockPosition(1, 4));
     expect(result).toBeUndefined();
   });
@@ -194,5 +236,37 @@ import SideBar from './SideBar.vue'
     );
     const result = getVueComponentImportPath(doc, mockPosition(1, 5));
     expect(result).toBe('./SideBar.vue');
+  });
+
+  it('should work with .svelte files', () => {
+    const doc = createMockDocument(
+      `<div>
+  <MyWidget />
+</div>
+<script>
+import MyWidget from './MyWidget.svelte'
+</script>`,
+      'test.svelte'
+    );
+    // .svelte files don't have <template>, but our tag matcher works on any line
+    // The getVueComponentImportPath checks for .vue or .svelte extension
+    const result = getVueComponentImportPath(doc, mockPosition(1, 5));
+    expect(result).toBe('./MyWidget.svelte');
+  });
+
+  it('should handle multi-line named imports', () => {
+    const doc = createMockDocument(
+      `<template>
+  <DialogBox />
+</template>
+<script>
+import {
+  DialogBox,
+  Tooltip
+} from '@/components/ui'
+</script>`
+    );
+    const result = getVueComponentImportPath(doc, mockPosition(1, 5));
+    expect(result).toBe('@/components/ui');
   });
 });

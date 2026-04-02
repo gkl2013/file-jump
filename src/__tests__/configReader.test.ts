@@ -68,4 +68,133 @@ describe('readTsConfigPaths', () => {
     const result = readTsConfigPaths('/project');
     expect(result).toEqual([]);
   });
+
+  it('should handle tsconfig.json with comments', () => {
+    mockFs.existsSync.mockImplementation((p: fs.PathLike) => {
+      return p === path.join('/project', 'tsconfig.json');
+    });
+
+    mockFs.readFileSync.mockImplementation((p: fs.PathOrFileDescriptor) => {
+      if (p === path.join('/project', 'tsconfig.json')) {
+        return `{
+          // This is a comment
+          "compilerOptions": {
+            "baseUrl": ".",
+            /* block comment */
+            "paths": {
+              "@/*": ["src/*"]
+            }
+          }
+        }`;
+      }
+      throw new Error('ENOENT');
+    });
+
+    const result = readTsConfigPaths('/project');
+    expect(result).toEqual([
+      { alias: '@', path: path.resolve('/project', 'src') },
+    ]);
+  });
+
+  it('should handle tsconfig.json with trailing commas', () => {
+    mockFs.existsSync.mockImplementation((p: fs.PathLike) => {
+      return p === path.join('/project', 'tsconfig.json');
+    });
+
+    mockFs.readFileSync.mockImplementation((p: fs.PathOrFileDescriptor) => {
+      if (p === path.join('/project', 'tsconfig.json')) {
+        return `{
+          "compilerOptions": {
+            "baseUrl": ".",
+            "paths": {
+              "@/*": ["src/*"],
+            },
+          },
+        }`;
+      }
+      throw new Error('ENOENT');
+    });
+
+    const result = readTsConfigPaths('/project');
+    expect(result).toEqual([
+      { alias: '@', path: path.resolve('/project', 'src') },
+    ]);
+  });
+
+  it('should read paths from extended tsconfig', () => {
+    const baseTsconfigPath = path.join('/project', 'tsconfig.base.json');
+    const tsconfigPath = path.join('/project', 'tsconfig.json');
+
+    mockFs.existsSync.mockImplementation((p: fs.PathLike) => {
+      return p === tsconfigPath || p === baseTsconfigPath;
+    });
+
+    mockFs.readFileSync.mockImplementation((p: fs.PathOrFileDescriptor) => {
+      if (p === tsconfigPath) {
+        return JSON.stringify({
+          extends: './tsconfig.base.json',
+          compilerOptions: {
+            // No paths here — should inherit from base
+          },
+        });
+      }
+      if (p === baseTsconfigPath) {
+        return JSON.stringify({
+          compilerOptions: {
+            baseUrl: '.',
+            paths: {
+              '@/*': ['src/*'],
+              '@utils/*': ['src/utils/*'],
+            },
+          },
+        });
+      }
+      throw new Error('ENOENT');
+    });
+
+    const result = readTsConfigPaths('/project');
+    expect(result).toEqual([
+      { alias: '@', path: path.resolve('/project', 'src') },
+      { alias: '@utils', path: path.resolve('/project', 'src/utils') },
+    ]);
+  });
+
+  it('should override parent paths with child paths', () => {
+    const baseTsconfigPath = path.join('/project', 'tsconfig.base.json');
+    const tsconfigPath = path.join('/project', 'tsconfig.json');
+
+    mockFs.existsSync.mockImplementation((p: fs.PathLike) => {
+      return p === tsconfigPath || p === baseTsconfigPath;
+    });
+
+    mockFs.readFileSync.mockImplementation((p: fs.PathOrFileDescriptor) => {
+      if (p === tsconfigPath) {
+        return JSON.stringify({
+          extends: './tsconfig.base.json',
+          compilerOptions: {
+            baseUrl: '.',
+            paths: {
+              '@/*': ['lib/*'],  // override parent
+            },
+          },
+        });
+      }
+      if (p === baseTsconfigPath) {
+        return JSON.stringify({
+          compilerOptions: {
+            baseUrl: '.',
+            paths: {
+              '@/*': ['src/*'],
+              '@utils/*': ['src/utils/*'],
+            },
+          },
+        });
+      }
+      throw new Error('ENOENT');
+    });
+
+    const result = readTsConfigPaths('/project');
+    expect(result).toContainEqual({ alias: '@', path: path.resolve('/project', 'lib') });
+    expect(result).toContainEqual({ alias: '@utils', path: path.resolve('/project', 'src/utils') });
+  });
 });
