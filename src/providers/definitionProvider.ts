@@ -8,8 +8,8 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { getConfig, resolveAliasMap, readWebpackAliases, readTsConfigPaths, readCommonConfigAliases } from '../utils/configReader';
-import { getImportContextAtPosition } from '../utils/importParser';
-import { resolveAliasPath } from '../resolvers/aliasResolver';
+import { getImportContextAtPosition, getVueComponentImportPath } from '../utils/importParser';
+import { resolveAliasPath, tryResolveFile } from '../resolvers/aliasResolver';
 import { detectMonorepoPackages, findPackageForFile } from '../utils/monorepoDetector';
 import { AliasMapping, MonorepoPackage, FileJumpConfig } from '../types';
 
@@ -40,8 +40,10 @@ export class FileJumpDefinitionProvider implements vscode.DefinitionProvider {
 
     // Extract the import path at cursor position
     const importContext = getImportContextAtPosition(document, position);
+
+    // If no import statement found, try Vue component tag resolution
     if (!importContext) {
-      return undefined;
+      return this.resolveVueComponentTag(document, position, config);
     }
 
     const { importPath } = importContext;
@@ -151,6 +153,64 @@ export class FileJumpDefinitionProvider implements vscode.DefinitionProvider {
     }
 
     return true;
+  }
+
+  /**
+   * Resolves a Vue component tag in template to its source file.
+   * When the cursor is on a component tag (e.g. <MyComponent> or <my-component>),
+   * finds the corresponding import in <script> and resolves it.
+   */
+  private async resolveVueComponentTag(
+    document: vscode.TextDocument,
+    position: vscode.Position,
+    config: FileJumpConfig
+  ): Promise<vscode.Definition | undefined> {
+    // Only for .vue files
+    if (!document.fileName.endsWith('.vue')) {
+      return undefined;
+    }
+
+    const importPath = getVueComponentImportPath(document, position);
+    if (!importPath) {
+      return undefined;
+    }
+
+    // Skip relative paths — let built-in service handle
+    if (importPath.startsWith('.') || importPath.startsWith('/')) {
+      // For relative paths, resolve directly since built-in may not handle .vue
+      const currentDir = path.dirname(document.fileName);
+      const absolutePath = path.resolve(currentDir, importPath);
+      const resolved = tryResolveFile(absolutePath, config);
+      if (resolved) {
+        const targetUri = vscode.Uri.file(resolved.filePath);
+        return new vscode.Location(targetUri, new vscode.Position(0, 0));
+      }
+      return undefined;
+    }
+
+    // Get the workspace root
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
+    if (!workspaceFolder) {
+      return undefined;
+    }
+
+    const rootPath = workspaceFolder.uri.fsPath;
+
+    await this.refreshAliases(rootPath, config);
+
+    if (this.isBareModuleSpecifier(importPath, config)) {
+      return undefined;
+    }
+
+    const aliases = this.getAliasesForFile(document.uri.fsPath, rootPath, config);
+    const result = resolveAliasPath(importPath, aliases, config);
+
+    if (!result) {
+      return undefined;
+    }
+
+    const targetUri = vscode.Uri.file(result.filePath);
+    return new vscode.Location(targetUri, new vscode.Position(0, 0));
   }
 
   /**
